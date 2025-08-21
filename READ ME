@@ -1,0 +1,125 @@
+SALES PREDICTION USING PYTHON
+import os
+import fitz
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+pdf_path = 'advertising.pdf'
+print('Looking for file at path: ' + str(pdf_path))
+all_lines = []
+with fitz.open(pdf_path) as doc:
+    for page in doc:
+        text = page.get_text('text')
+        for line in text.split('\
+'):
+            all_lines.append(line)
+
+print('Total lines extracted: ' + str(len(all_lines)))
+
+header_candidates = []
+for line in all_lines:
+    lower = line.lower().strip()
+    if ('tv' in lower and 'radio' in lower and 'news' in lower and 'sales' in lower) or ('tv' in lower and 'radio' in lower and 'newspaper' in lower and 'sales' in lower):
+        header_candidates.append(line)
+
+header = None
+if len(header_candidates) > 0:
+    header = header_candidates[0]
+print('Detected header: ' + str(header))
+
+rows = []
+for line in all_lines:
+    parts = [p for p in line.replace('\	', ' ').split(' ') if p.strip() != ''
+      
+    numeric_parts = []
+    for p in parts:
+        try:
+            float(p)
+            numeric_parts.append(p)
+        except Exception as e:
+            pass
+    if len(numeric_parts) == 4:
+        rows.append(numeric_parts)
+
+print('Numeric 4-col rows found: ' + str(len(rows)))
+
+cols = ['TV', 'Radio', 'Newspaper', 'Sales']
+df = pd.DataFrame(rows, columns=cols)
+for c in cols:
+    df[c] = pd.to_numeric(df[c], errors='coerce')
+
+before = len(df)
+df = df.dropna().reset_index(drop=True)
+after = len(df)
+print('Rows after cleaning: ' + str(after))
+
+if len(df) == 0:
+    print('Parsed dataframe is empty; please provide a CSV or XLSX if available.')
+else:
+    print('Dataframe head:')
+    print(df.head())
+    df['Index'] = range(1, len(df) + 1)
+
+    plt.figure(figsize=(6,4))
+    sns.histplot(df['Sales'], kde=True, bins=20)
+    plt.title('Sales Distribution - Histogram')
+    plt.xlabel('Sales')
+    plt.ylabel('Count')
+    plt.tight_layout()
+    plt.show()
+
+    plt.figure(figsize=(6,2.8))
+    sns.boxplot(x=df['Sales'])
+    plt.title('Sales Distribution - Boxplot')
+    plt.xlabel('Sales')
+    plt.tight_layout()
+    plt.show()
+
+    plt.figure(figsize=(7,3.5))
+    sns.lineplot(x='Index', y='Sales', data=df)
+    plt.title('Sales Trend Over Index')
+    plt.xlabel('Index')
+    plt.ylabel('Sales')
+    plt.tight_layout()
+    plt.show()
+
+    plt.figure(figsize=(6,4))
+    sns.scatterplot(x='TV', y='Sales', data=df)
+    plt.title('Sales vs TV Spend')
+    plt.xlabel('TV')
+    plt.ylabel('Sales')
+    plt.tight_layout()
+    plt.show()
+
+    plt.figure(figsize=(6,4))
+    sns.scatterplot(x='Radio', y='Sales', data=df)
+    plt.title('Sales vs Radio Spend')
+    plt.xlabel('Radio')
+    plt.ylabel('Sales')
+    plt.tight_layout()
+    plt.show()
+
+    plt.figure(figsize=(6,4))
+    sns.scatterplot(x='Newspaper', y='Sales', data=df)
+    plt.title('Sales vs Newspaper Spend')
+    plt.xlabel('Newspaper')
+    plt.ylabel('Sales')
+    plt.tight_layout()
+    plt.show()
+    def dominant_channel(row):
+        vals = {'TV': row['TV'], 'Radio': row['Radio'], 'Newspaper': row['Newspaper']}
+        return max(vals, key=vals.get)
+
+    df['Platform'] = df.apply(dominant_channel, axis=1)
+    platform_sales = df.groupby('Platform', as_index=False)['Sales'].mean()
+
+    plt.figure(figsize=(6,4))
+    sns.barplot(x='Platform', y='Sales', data=platform_sales, order=['TV','Radio','Newspaper'])
+    plt.title('Average Sales by Dominant Ad Platform')
+    plt.xlabel('Platform')
+    plt.ylabel('Average Sales')
+    plt.tight_layout()
+    plt.show()
+
+    print('Generated histogram, boxplot, line plot, scatter plots, and bar chart based on extracted data.')
